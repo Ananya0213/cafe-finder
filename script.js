@@ -14,7 +14,7 @@ const detailsContent = document.getElementById('details-content');
 
 // --- API & APP STATE ---
 const apiKey = 'AIzaSyCyVwiDqv-4mq80DCLLTvkxGS7NzPgcyPI';
-const useProxy = true;
+const useProxy = false;
 const proxy = 'https://cors-anywhere.herokuapp.com/';
 let allCafes = [];
 let currentCafes = [];
