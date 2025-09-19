@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cafe Finder</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <div class="header-top">
+                 <h1>Cafe Finder</h1>
+                 <button id="favorites-btn" aria-label="View Favorites">★</button>
+            </div>
+            <form id="search-form">
+                <input type="text" id="location-search-input" placeholder="Search for a city...">
+                <button type="submit">Search</button>
+            </form>
+            <p id="current-location-display">Discover cafes near you</p>
+        </header>
+
+        <!-- New Map Container -->
+        <div id="map-container">
+            <div id="map"></div>
+        </div>
+
+        <main class="card-container" id="cards">
+             <div id="status-message" class="status-message">
+                <div class="loader-wrapper">
+                    <div class="loader"></div>
+                    <p>Finding Cafes...</p>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            Swipe right to save ❤️, left to dismiss.
+        </footer>
+    </div>
+
+    <!-- Favorites Modal -->
+    <div id="favorites-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Your Saved Cafes</h2>
+                <button id="close-favorites-modal-btn" class="close-btn">&times;</button>
+            </div>
+            <div id="favorites-list" class="favorites-list"></div>
+        </div>
+    </div>
+
+    <!-- New Cafe Details Modal -->
+    <div id="details-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Details</h2>
+                <button id="close-details-modal-btn" class="close-btn">&times;</button>
+            </div>
+            <div id="details-content" class="details-content"></div>
+        </div>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+    <script src="script.js"></script>
+    <!-- IMPORTANT: Google Maps JavaScript API Script -->
+    <!-- Replace YOUR_API_KEY with your actual key -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCyVwiDqv-4mq80DCLLTvkxGS7NzPgcyPI" defer></script>
+</body>
+</html>
+
