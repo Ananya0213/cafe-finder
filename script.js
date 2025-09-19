@@ -14,7 +14,7 @@ const detailsContent = document.getElementById('details-content');
 
 // --- API & APP STATE ---
 const apiKey = 'AIzaSyCyVwiDqv-4mq80DCLLTvkxGS7NzPgcyPI';
-const useProxy = false;
+const useProxy = false; // <-- THIS IS THE CRITICAL CHANGE
 const proxy = 'https://cors-anywhere.herokuapp.com/';
 let allCafes = [];
 let currentCafes = [];
@@ -23,16 +23,8 @@ let map;
 let markers = [];
 
 // --- INITIALIZATION ---
-function initMap() {
-    // Called by the Google Maps script in index.html
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    // Request temporary access to proxy on load
-    fetch(proxy)
-      .then(() => getLocation())
-      .catch(() => getLocation()); // Proceed even if proxy activation fails
-});
+function initMap() { }
+document.addEventListener('DOMContentLoaded', getLocation);
 
 // --- EVENT LISTENERS ---
 searchForm.addEventListener('submit', handleSearch);
@@ -45,18 +37,10 @@ detailsModal.addEventListener('click', (e) => e.target === detailsModal && hideD
 // --- GEOLOCATION & SEARCH ---
 function getLocation() {
     showLoader("Finding your location...");
-    const cache = JSON.parse(localStorage.getItem('cachedLocation')) || {};
-    const now = Date.now();
-
-    if (cache.timestamp && (now - cache.timestamp < 600000)) { // 10 minutes
-        useLocation(cache.lat, cache.lng);
-    } else {
-        navigator.geolocation.getCurrentPosition(pos => {
-            const { latitude: lat, longitude: lng } = pos.coords;
-            localStorage.setItem('cachedLocation', JSON.stringify({ lat, lng, timestamp: now }));
-            useLocation(lat, lng);
-        }, () => showStatusMessage("Location access denied."));
-    }
+    navigator.geolocation.getCurrentPosition(pos => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        useLocation(lat, lng);
+    }, () => showStatusMessage("Location access denied."));
 }
 
 function handleSearch(e) {
@@ -67,9 +51,7 @@ function handleSearch(e) {
 
 async function getCoordsForLocation(query) {
     showLoader(`Searching for ${query}...`);
-    const url = useProxy 
-        ? `${proxy}https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${apiKey}`
-        : `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${apiKey}`;
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${apiKey}`;
 
     try {
         const res = await fetch(url);
@@ -89,9 +71,7 @@ async function getCoordsForLocation(query) {
 async function useLocation(lat, lng) {
     showLoader("Finding nearby cafes...");
     initializeMap(lat, lng);
-    const url = useProxy
-        ? `${proxy}https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=10000&keyword=cafe&key=${apiKey}`
-        : `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=10000&keyword=cafe&key=${apiKey}`;
+    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=10000&keyword=cafe&key=${apiKey}`;
     
     try {
         const res = await fetch(url);
@@ -212,9 +192,7 @@ async function fetchPlaceDetails(placeId) {
     detailsContent.innerHTML = '<div class="loader-wrapper"><div class="loader"></div></div>';
     detailsModal.classList.remove('hidden');
     const fields = 'name,formatted_phone_number,website,opening_hours,formatted_address';
-    const url = useProxy
-        ? `${proxy}https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=${fields}&key=${apiKey}`
-        : `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=${fields}&key=${apiKey}`;
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=${fields}&key=${apiKey}`;
 
     try {
         const res = await fetch(url);
