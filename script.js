@@ -13,7 +13,7 @@ const closeDetailsModalBtn = document.getElementById('close-details-modal-btn');
 const detailsContent = document.getElementById('details-content');
 
 // --- API & APP STATE ---
-const apiKey = 'AIzaSyCyVwiDqv-4mq80DCLLTvkxGS7NzPgcyPI';
+const apiKey = 'AIzaSyDwZBgUuyqjTXflqgfnIz7ooAncpMrFHlQ';
 const useProxy = false; // <-- THIS IS THE CRITICAL CHANGE
 const proxy = 'https://cors-anywhere.herokuapp.com/';
 let allCafes = [];
