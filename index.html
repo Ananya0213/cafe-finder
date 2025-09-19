@@ -23,7 +23,6 @@
             <p id="current-location-display">Discover cafes near you</p>
         </header>
 
-        <!-- New Map Container -->
         <div id="map-container">
             <div id="map"></div>
         </div>
@@ -42,7 +41,7 @@
         </footer>
     </div>
 
-    <!-- Favorites Modal -->
+    <!-- Modals -->
     <div id="favorites-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <div class="modal-header">
@@ -52,8 +51,6 @@
             <div id="favorites-list" class="favorites-list"></div>
         </div>
     </div>
-
-    <!-- New Cafe Details Modal -->
     <div id="details-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <div class="modal-header">
@@ -67,9 +64,8 @@
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
     <script src="script.js"></script>
-    <!-- IMPORTANT: Google Maps JavaScript API Script -->
-    <!-- Replace YOUR_API_KEY with your actual key -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCyVwiDqv-4mq80DCLLTvkxGS7NzPgcyPI" defer></script>
-</body>
+    <!-- IMPORTANT: ADD YOUR KEY HERE -->
+    <!-- IMPORTANT: ADD YOUR KEY HERE -->
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCyVwiDqv-4mq80DCLLTvkxGS7NzPgcyPI&callback=initMap" defer></script>
 </html>
 
