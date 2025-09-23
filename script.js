@@ -4,119 +4,171 @@ const statusMessage = document.getElementById('status-message');
 const searchForm = document.getElementById('search-form');
 const searchInput = document.getElementById('location-search-input');
 const locationDisplay = document.getElementById('current-location-display');
+
+// Modal Elements
 const favoritesBtn = document.getElementById('favorites-btn');
 const favoritesModal = document.getElementById('favorites-modal');
 const closeFavoritesModalBtn = document.getElementById('close-favorites-modal-btn');
 const favoritesList = document.getElementById('favorites-list');
+
 const detailsModal = document.getElementById('details-modal');
 const closeDetailsModalBtn = document.getElementById('close-details-modal-btn');
 const detailsContent = document.getElementById('details-content');
 
+const viewMapBtn = document.getElementById('view-map-btn');
+const mapModal = document.getElementById('map-modal');
+const closeMapModalBtn = document.getElementById('close-map-modal-btn');
+
 // --- API & APP STATE ---
-const apiKey = 'AIzaSyDwZBgUuyqjTXflqgfnIz7ooAncpMrFHlQ';
-const useProxy = false; // <-- THIS IS THE CRITICAL CHANGE
+const apiKey = 'AIzaSyDwZBgUuyqjTXflqgfnIz7ooAncpMrFHlQ'; 
+const useProxy = false; // Set to false for deployment
 const proxy = 'https://cors-anywhere.herokuapp.com/';
 let allCafes = [];
 let currentCafes = [];
 let favorites = JSON.parse(localStorage.getItem('favoriteCafes')) || [];
 let map;
 let markers = [];
+let currentMapCenter = { lat: 0, lng: 0 };
 
 // --- INITIALIZATION ---
-function initMap() { }
+// Called by the Google Maps script in index.html
+function initMap() {
+    // This function is now just a required callback for the Maps script.
+    // The map itself is initialized when we have a location.
+}
+
 document.addEventListener('DOMContentLoaded', getLocation);
+
 
 // --- EVENT LISTENERS ---
 searchForm.addEventListener('submit', handleSearch);
+
 favoritesBtn.addEventListener('click', showFavoritesModal);
 closeFavoritesModalBtn.addEventListener('click', hideFavoritesModal);
-closeDetailsModalBtn.addEventListener('click', hideDetailsModal);
-favoritesModal.addEventListener('click', (e) => e.target === favoritesModal && hideFavoritesModal());
-detailsModal.addEventListener('click', (e) => e.target === detailsModal && hideDetailsModal());
 
-// --- GEOLOCATION & SEARCH ---
+detailsModal.addEventListener('click', (e) => {
+    if (e.target === detailsModal) hideDetailsModal();
+});
+closeDetailsModalBtn.addEventListener('click', hideDetailsModal);
+
+viewMapBtn.addEventListener('click', showMapModal);
+closeMapModalBtn.addEventListener('click', hideMapModal);
+mapModal.addEventListener('click', (e) => {
+    if (e.target === mapModal) hideMapModal();
+});
+
+
+// --- GEOLOCATION & SEARCH LOGIC ---
 function getLocation() {
     showLoader("Finding your location...");
-    navigator.geolocation.getCurrentPosition(pos => {
-        const { latitude: lat, longitude: lng } = pos.coords;
-        useLocation(lat, lng);
-    }, () => showStatusMessage("Location access denied."));
+    const cache = JSON.parse(localStorage.getItem('cachedLocation')) || {};
+    const now = Date.now();
+
+    if (cache.timestamp && (now - cache.timestamp < 10 * 60 * 1000)) {
+        useLocation(cache.lat, cache.lng);
+    } else {
+        navigator.geolocation.getCurrentPosition(pos => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            localStorage.setItem('cachedLocation', JSON.stringify({ lat, lng, timestamp: now }));
+            useLocation(lat, lng);
+        }, () => {
+            showStatusMessage("Location access denied or unavailable.");
+        });
+    }
 }
 
 function handleSearch(e) {
     e.preventDefault();
     const query = searchInput.value.trim();
-    if (query) getCoordsForLocation(query);
+    if (query) {
+        getCoordsForLocation(query);
+    }
 }
 
-async function getCoordsForLocation(query) {
-    showLoader(`Searching for ${query}...`);
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${apiKey}`;
+async function getCoordsForLocation(locationQuery) {
+    showLoader(`Searching for ${locationQuery}...`);
+    const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(locationQuery)}&key=${apiKey}`;
+    const urlToFetch = useProxy ? proxy + geocodeUrl : geocodeUrl;
 
     try {
-        const res = await fetch(url);
-        const data = await res.json();
-        if (data.results.length) {
-            const { lat, lng } = data.results[0].geometry.location;
-            locationDisplay.textContent = `Results for: ${data.results[0].formatted_address}`;
-            useLocation(lat, lng);
+        const response = await fetch(urlToFetch);
+        const data = await response.json();
+        if (data.results && data.results.length > 0) {
+            const location = data.results[0].geometry.location;
+            locationDisplay.textContent = `Showing results for: ${data.results[0].formatted_address}`;
+            useLocation(location.lat, location.lng);
         } else {
-            showStatusMessage(`Could not find ${query}.`);
+            showStatusMessage(`Could not find location: ${locationQuery}`);
         }
-    } catch (err) {
-        showStatusMessage("Error fetching location.");
+    } catch (e) {
+        showStatusMessage("Error fetching location data.");
     }
 }
 
 async function useLocation(lat, lng) {
     showLoader("Finding nearby cafes...");
-    initializeMap(lat, lng);
-    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=10000&keyword=cafe&key=${apiKey}`;
+    currentMapCenter = { lat, lng };
+
+    const endpoint = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=10000&keyword=cafe&key=${apiKey}`;
+    const url = useProxy ? proxy + endpoint : endpoint;
     
     try {
-        const res = await fetch(url);
-        const data = await res.json();
-        if (data.results.length) {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.results && data.results.length > 0) {
             allCafes = data.results;
-            currentCafes = [...allCafes];
+            currentCafes = [...allCafes]; 
             statusMessage.classList.add('hidden');
-            addMarkersToMap(allCafes);
             displayNextCard();
         } else {
+            allCafes = [];
+            currentCafes = [];
             showStatusMessage("No cafes found nearby.");
         }
-    } catch (err) {
+    } catch (e) {
         showStatusMessage("Error fetching cafes.");
     }
 }
 
-// --- MAP ---
+
+// --- MAP FUNCTIONALITY ---
 function initializeMap(lat, lng) {
-    map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat, lng },
-        zoom: 12,
-        disableDefaultUI: true,
-    });
+    if (!map) {
+        map = new google.maps.Map(document.getElementById("map"), {
+            center: { lat, lng },
+            zoom: 12,
+            disableDefaultUI: true,
+        });
+    } else {
+        map.setCenter({ lat, lng });
+    }
 }
 
 function addMarkersToMap(cafes) {
+    // Clear old markers
     markers.forEach(marker => marker.setMap(null));
     markers = [];
+
     cafes.forEach(cafe => {
-        const marker = new google.maps.Marker({
-            position: cafe.geometry.location,
-            map,
-            title: cafe.name,
-        });
-        markers.push(marker);
+        if (cafe.geometry && cafe.geometry.location) {
+            const marker = new google.maps.Marker({
+                position: cafe.geometry.location,
+                map: map,
+                title: cafe.name,
+            });
+            markers.push(marker);
+        }
     });
 }
 
-// --- CARDS ---
+
+// --- UI & CARD DISPLAY ---
 function displayNextCard() {
     container.innerHTML = '';
-    if (!currentCafes.length) {
-        showStatusMessage("You've seen all cafes! Try a new search.");
+    if (currentCafes.length === 0) {
+        showStatusMessage("You've seen all the cafes! Try a new search.");
         return;
     }
     
@@ -137,11 +189,12 @@ function displayNextCard() {
 function createCardElement(data) {
     const wrapper = document.createElement('div');
     wrapper.className = 'swipe-wrapper';
+
     wrapper.innerHTML = `
         <div class="location-card">
             <div class="swipe-indicator like">LIKE</div>
             <div class="swipe-indicator nope">NOPE</div>
-            <img src="${data.photoUrl}" alt="${data.name}" onerror="this.src='https://placehold.co/400x300/6d4c41/f4f1ea?text=Image+Error';">
+            <img src="${data.photoUrl}" alt="${data.name}" onerror="this.onerror=null;this.src='https://placehold.co/400x300/6d4c41/f4f1ea?text=Image+Error';">
             <div class="card-info">
                 <div>
                     <h3>${data.name}</h3>
@@ -154,29 +207,44 @@ function createCardElement(data) {
             </div>
         </div>
     `;
-    wrapper.querySelector('.details-btn').addEventListener('click', () => fetchPlaceDetails(data.place_id));
+
+    wrapper.querySelector('.details-btn').addEventListener('click', () => {
+        fetchPlaceDetails(data.place_id);
+    });
+
     return wrapper;
 }
 
+
 function setupSwipe(element, data) {
     const hammertime = new Hammer(element);
-    hammertime.on('pan', e => {
+    
+    hammertime.on('pan', (event) => {
         element.style.transition = 'none';
-        element.style.transform = `translate(${e.deltaX}px, ${e.deltaY}px) rotate(${e.deltaX / 10}deg)`;
-        element.querySelector('.like').style.opacity = e.deltaX > 0 ? e.deltaX / 100 : 0;
-        element.querySelector('.nope').style.opacity = e.deltaX < 0 ? -e.deltaX / 100 : 0;
+        element.style.transform = `translate(${event.deltaX}px, ${event.deltaY}px) rotate(${event.deltaX / 10}deg)`;
+        
+        const likeIndicator = element.querySelector('.like');
+        const nopeIndicator = element.querySelector('.nope');
+
+        if (event.deltaX > 0) {
+            likeIndicator.style.opacity = event.deltaX / 100;
+        } else {
+            nopeIndicator.style.opacity = -event.deltaX / 100;
+        }
     });
-    hammertime.on('panend', e => {
+
+    hammertime.on('panend', (event) => {
         element.style.transition = 'transform 0.4s ease-in-out';
         const moveOutWidth = document.body.clientWidth;
-        if (e.deltaX > 100) {
-            element.style.transform = `translate(${moveOutWidth}px, ${e.deltaY}px) rotate(30deg)`;
+
+        if (event.deltaX > 100) { // Swipe right
+            element.style.transform = `translate(${moveOutWidth}px, ${event.deltaY}px) rotate(30deg)`;
             saveToFavorites(data);
             processNextCard();
-        } else if (e.deltaX < -100) {
-            element.style.transform = `translate(${-moveOutWidth}px, ${e.deltaY}px) rotate(-30deg)`;
+        } else if (event.deltaX < -100) { // Swipe left
+            element.style.transform = `translate(${-moveOutWidth}px, ${event.deltaY}px) rotate(-30deg)`;
             processNextCard();
-        } else {
+        } else { // Return to center
             element.style.transform = '';
         }
     });
@@ -184,19 +252,24 @@ function setupSwipe(element, data) {
 
 function processNextCard() {
     currentCafes.shift();
-    setTimeout(displayNextCard, 300);
+    setTimeout(() => {
+        displayNextCard();
+    }, 300);
 }
 
-// --- DETAILS ---
+
+// --- DETAILS FUNCTIONALITY ---
 async function fetchPlaceDetails(placeId) {
     detailsContent.innerHTML = '<div class="loader-wrapper"><div class="loader"></div></div>';
     detailsModal.classList.remove('hidden');
+
     const fields = 'name,formatted_phone_number,website,opening_hours,formatted_address';
-    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=${fields}&key=${apiKey}`;
+    const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=${fields}&key=${apiKey}`;
+    const urlToFetch = useProxy ? proxy + detailsUrl : detailsUrl;
 
     try {
-        const res = await fetch(url);
-        const data = await res.json();
+        const response = await fetch(urlToFetch);
+        const data = await response.json();
         if (data.result) {
             displayPlaceDetails(data.result);
         } else {
@@ -209,16 +282,18 @@ async function fetchPlaceDetails(placeId) {
 
 function displayPlaceDetails(details) {
     let content = `<h3>${details.name}</h3>`;
-    content += `<p><strong>Address:</strong> ${details.formatted_address || 'N/A'}</p>`;
-    content += `<p><strong>Phone:</strong> ${details.formatted_phone_number || 'N/A'}</p>`;
-    content += `<p><strong>Website:</strong> ${details.website ? `<a href="${details.website}" target="_blank">Visit Website</a>` : 'N/A'}</p>`;
+    content += `<p><strong>Address:</strong> ${details.formatted_address || 'Not available'}</p>`;
+    content += `<p><strong>Phone:</strong> ${details.formatted_phone_number || 'Not available'}</p>`;
+    content += `<p><strong>Website:</strong> ${details.website ? `<a href="${details.website}" target="_blank">Visit Website</a>` : 'Not available'}</p>`;
+    
     if (details.opening_hours) {
-        content += '<h4>Hours:</h4><p>' + details.opening_hours.weekday_text.join('<br>') + '</p>';
+        content += '<h4>Opening Hours:</h4><p>' + details.opening_hours.weekday_text.join('<br>') + '</p>';
     }
     detailsContent.innerHTML = content;
 }
 
-// --- FAVORITES ---
+
+// --- FAVORITES & MODAL FUNCTIONALITY ---
 function saveToFavorites(cafeData) {
     if (!favorites.some(fav => fav.place_id === cafeData.place_id)) {
         favorites.push(cafeData);
@@ -228,14 +303,14 @@ function saveToFavorites(cafeData) {
 
 function showFavoritesModal() {
     favoritesList.innerHTML = '';
-    if (!favorites.length) {
-        favoritesList.innerHTML = '<p style="padding: 20px; text-align: center;">No saved cafes yet.</p>';
+    if (favorites.length === 0) {
+        favoritesList.innerHTML = '<p style="padding: 20px; text-align: center;">You haven\'t saved any cafes yet.</p>';
     } else {
         favorites.forEach(cafe => {
             const item = document.createElement('div');
             item.className = 'favorite-item';
             item.innerHTML = `
-                <img src="${cafe.photoUrl}" alt="${cafe.name}" onerror="this.src='https://placehold.co/60x60/6d4c41/f4f1ea?text=...';">
+                <img src="${cafe.photoUrl}" alt="${cafe.name}" onerror="this.onerror=null;this.src='https://placehold.co/60x60/6d4c41/f4f1ea?text=...';">
                 <div class="favorite-item-info">
                     <h4>${cafe.name}</h4>
                     <p>⭐ ${cafe.rating}</p>
@@ -247,7 +322,15 @@ function showFavoritesModal() {
     favoritesModal.classList.remove('hidden');
 }
 
-// --- MODAL & STATUS UTILITIES ---
+function showMapModal() {
+    mapModal.classList.remove('hidden');
+    // We need to initialize or update the map when the modal is shown
+    setTimeout(() => {
+        initializeMap(currentMapCenter.lat, currentMapCenter.lng);
+        addMarkersToMap(allCafes);
+    }, 100); // Small delay to ensure modal is visible
+}
+
 function hideFavoritesModal() {
     favoritesModal.classList.add('hidden');
 }
@@ -256,12 +339,18 @@ function hideDetailsModal() {
     detailsModal.classList.add('hidden');
 }
 
+function hideMapModal() {
+    mapModal.classList.add('hidden');
+}
+
+// --- UTILITY & STATUS FUNCTIONS ---
 function showStatusMessage(message) {
     container.innerHTML = `<div class="status-message"><p>${message}</p></div>`;
-    statusMessage.classList.remove('hidden');
+    statusMessage.classList.add('hidden');
 }
 
 function showLoader(message) {
+    container.innerHTML = '';
     statusMessage.innerHTML = `
         <div class="loader-wrapper">
             <div class="loader"></div>
@@ -269,6 +358,5 @@ function showLoader(message) {
         </div>
     `;
     statusMessage.classList.remove('hidden');
-    container.innerHTML = '';
 }
 
