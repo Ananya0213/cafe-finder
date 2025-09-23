@@ -1,30 +1,28 @@
-// This is a temporary diagnostic function.
-// It does NOT call the Google API. It returns hardcoded fake data.
-// This is to test if the Vercel serverless function itself is working.
+// This is the main serverless function to find cafes near a given location.
+// It securely uses the API key from environment variables.
 
 export default async function handler(request, response) {
+  const { lat, lng } = request.query;
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
 
-  // Create fake cafe data to send back to the app.
-  const fakeCafeData = {
-    results: [
-      {
-        name: "SUCCESS: Vercel Function is Working!",
-        place_id: "fake_place_id_1",
-        photos: [{ photo_reference: "fake_photo_ref" }], // This will result in a broken image, which is expected.
-        rating: 5.0,
-        vicinity: "This fake data proves the problem is with the Google Cloud Project."
-      },
-      {
-        name: "Test Cafe 2",
-        place_id: "fake_place_id_2",
-        photos: [{ photo_reference: "fake_photo_ref_2" }],
-        rating: 4.5,
-        vicinity: "Bhopal, Madhya Pradesh"
-      }
-    ]
-  };
+  if (!apiKey) {
+    return response.status(500).json({ error: 'API key not configured.' });
+  }
 
-  // Send the fake data back to the browser.
-  response.status(200).json(fakeCafeData);
+  const endpoint = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=10000&keyword=cafe&key=${apiKey}`;
+
+  try {
+    const googleResponse = await fetch(endpoint);
+    const data = await googleResponse.json();
+    
+    if (data.error_message) {
+      console.error("Google API Error:", data.error_message);
+      return response.status(500).json({ error: 'Google API Error', details: data.error_message });
+    }
+
+    response.status(200).json(data);
+
+  } catch (error) {
+    response.status(500).json({ error: 'Failed to connect to the Places API.' });
+  }
 }
-
