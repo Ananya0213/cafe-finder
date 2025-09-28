@@ -14,7 +14,10 @@
         <header>
             <div class="header-top">
                  <h1>Cafe Finder</h1>
-                 <button id="favorites-btn" aria-label="View Favorites">★</button>
+                 <div class="header-buttons">
+                    <button id="view-map-btn" aria-label="View Map">🗺️</button>
+                    <button id="favorites-btn" aria-label="View Favorites">★</button>
+                 </div>
             </div>
             <form id="search-form">
                 <input type="text" id="location-search-input" placeholder="Search for a city...">
@@ -39,27 +42,21 @@
 
     <!-- Modals -->
     <div id="favorites-modal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Your Saved Cafes</h2>
-                <button id="close-favorites-modal-btn" class="close-btn">&times;</button>
-            </div>
-            <div id="favorites-list" class="favorites-list"></div>
-        </div>
+        <div class="modal-content"><div class="modal-header"><h2>Your Saved Cafes</h2><button id="close-favorites-modal-btn" class="close-btn">&times;</button></div><div id="favorites-list" class="favorites-list"></div></div>
     </div>
-     <div id="details-modal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Details</h2>
-                <button id="close-details-modal-btn" class="close-btn">&times;</button>
-            </div>
-            <div id="details-content" class="details-content"></div>
-        </div>
+    <div id="details-modal" class="modal-overlay hidden">
+        <div class="modal-content"><div class="modal-header"><h2>Details</h2><button id="close-details-modal-btn" class="close-btn">&times;</button></div><div id="details-content" class="details-content"></div></div>
+    </div>
+    <div id="map-modal" class="modal-overlay hidden">
+        <div class="modal-content modal-map-content"><div class="modal-header"><h2>Cafe Map</h2><button id="close-map-modal-btn" class="close-btn">&times;</button></div><div id="map-container-modal"><div id="map"></div></div></div>
     </div>
     
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
     <script src="script.js"></script>
+    
+    <!-- CRITICAL: PASTE YOUR "Final Frontend Key" HERE -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDkGRtXXvJcJ62NaVJcpSazHz_4z2Ok5AE&callback=initMap" defer></script>
 </body>
 </html>
 

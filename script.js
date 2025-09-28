@@ -15,16 +15,27 @@ const detailsModal = document.getElementById('details-modal');
 const closeDetailsModalBtn = document.getElementById('close-details-modal-btn');
 const detailsContent = document.getElementById('details-content');
 
-// --- API & APP STATE ---
-const apiKey = 'AIzaSyCnjJoGyaKw9Uw_1nbavjkFoKUtE4pvXho'; // CRITICAL: Add your API key here
-const useProxy = false; // We are on a live server, so we turn the proxy OFF.
-const proxy = 'https://cors-anywhere.herokuapp.com/'; // This is now ignored.
+const viewMapBtn = document.getElementById('view-map-btn');
+const mapModal = document.getElementById('map-modal');
+const closeMapModalBtn = document.getElementById('close-map-modal-btn');
+
+// --- APP STATE ---
+let apiKeyForClientPhotos = ''; // Key for non-essential client-side tasks (photos, map tiles)
 let allCafes = [];
 let currentCafes = [];
 let favorites = JSON.parse(localStorage.getItem('favoriteCafes')) || [];
+let map;
+let markers = [];
+let currentMapCenter = { lat: 0, lng: 0 };
 
 // --- INITIALIZATION ---
-document.addEventListener('DOMContentLoaded', getLocation);
+function initMap() { }
+
+document.addEventListener('DOMContentLoaded', () => {
+    setClientApiKey();
+    getLocation();
+});
+
 
 // --- EVENT LISTENERS ---
 searchForm.addEventListener('submit', handleSearch);
@@ -32,6 +43,10 @@ favoritesBtn.addEventListener('click', showFavoritesModal);
 closeFavoritesModalBtn.addEventListener('click', hideFavoritesModal);
 detailsModal.addEventListener('click', (e) => { if (e.target === detailsModal) hideDetailsModal(); });
 closeDetailsModalBtn.addEventListener('click', hideDetailsModal);
+viewMapBtn.addEventListener('click', showMapModal);
+closeMapModalBtn.addEventListener('click', hideMapModal);
+mapModal.addEventListener('click', (e) => { if (e.target === mapModal) hideMapModal(); });
+
 
 // --- GEOLOCATION & SEARCH LOGIC ---
 function getLocation() {
@@ -47,9 +62,7 @@ function getLocation() {
             const lng = pos.coords.longitude;
             localStorage.setItem('cachedLocation', JSON.stringify({ lat, lng, timestamp: now }));
             useLocation(lat, lng);
-        }, () => {
-            showStatusMessage("Location access denied or unavailable.");
-        });
+        }, () => { showStatusMessage("Location access denied or unavailable."); });
     }
 }
 
@@ -61,13 +74,11 @@ function handleSearch(e) {
     }
 }
 
+// *** NEW: CALLS OUR BACKEND ***
 async function getCoordsForLocation(locationQuery) {
     showLoader(`Searching for ${locationQuery}...`);
-    const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(locationQuery)}&key=${apiKey}`;
-    const urlToFetch = useProxy ? proxy + geocodeUrl : geocodeUrl;
-
     try {
-        const response = await fetch(urlToFetch);
+        const response = await fetch(`/api/get-coords?query=${encodeURIComponent(locationQuery)}`);
         const data = await response.json();
         if (data.results && data.results.length > 0) {
             const location = data.results[0].geometry.location;
@@ -81,48 +92,48 @@ async function getCoordsForLocation(locationQuery) {
     }
 }
 
+// *** NEW: CALLS OUR BACKEND ***
 async function useLocation(lat, lng) {
     showLoader("Finding nearby cafes...");
-    const endpoint = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=10000&keyword=cafe&key=${apiKey}`;
-    const url = useProxy ? proxy + endpoint : endpoint;
-    
+    currentMapCenter = { lat, lng };
     try {
-        const response = await fetch(url);
+        const response = await fetch(`/api/get-cafes?lat=${lat}&lng=${lng}`);
         const data = await response.json();
+
         if (data.results && data.results.length > 0) {
             allCafes = data.results;
-            currentCafes = [...allCafes];
+            currentCafes = [...allCafes]; 
             statusMessage.classList.add('hidden');
             displayNextCard();
         } else {
+            allCafes = [];
+            currentCafes = [];
             showStatusMessage("No cafes found nearby.");
         }
     } catch (e) {
-        showStatusMessage("Error fetching cafes. The API might be down or your key may be invalid.");
+        showStatusMessage("Error fetching cafes.");
     }
 }
 
+// *** NEW: CALLS OUR BACKEND ***
 async function fetchPlaceDetails(placeId) {
     detailsContent.innerHTML = '<div class="loader-wrapper"><div class="loader"></div></div>';
     detailsModal.classList.remove('hidden');
-    const fields = 'name,formatted_phone_number,website,opening_hours,formatted_address';
-    const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=${fields}&key=${apiKey}`;
-    const urlToFetch = useProxy ? proxy + detailsUrl : detailsUrl;
-
     try {
-        const response = await fetch(urlToFetch);
+        const response = await fetch(`/api/get-details?placeId=${placeId}`);
         const data = await response.json();
         if (data.result) {
             displayPlaceDetails(data.result);
         } else {
-            detailsContent.innerHTML = '<p>Could not load details.</p>';
+            detailsContent.innerHTML = `<p>Could not load details. ${data.details || ''}</p>`;
         }
     } catch (e) {
         detailsContent.innerHTML = '<p>Error fetching details.</p>';
     }
 }
 
-// --- UI & CARD DISPLAY ---
+// --- UI & CARD DISPLAY (Largely unchanged) ---
+
 function displayNextCard() {
     container.innerHTML = '';
     if (currentCafes.length === 0) {
@@ -133,7 +144,7 @@ function displayNextCard() {
     const cardData = {
         name: cafe.name,
         place_id: cafe.place_id,
-        photoUrl: cafe.photos ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${cafe.photos[0].photo_reference}&key=${apiKey}` : 'https://placehold.co/400x300/6d4c41/f4f1ea?text=No+Image',
+        photoUrl: cafe.photos ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${cafe.photos[0].photo_reference}&key=${apiKeyForClientPhotos}` : 'https://placehold.co/400x300/6d4c41/f4f1ea?text=No+Image',
         rating: cafe.rating || 'N/A',
         vicinity: cafe.vicinity
     };
@@ -170,7 +181,7 @@ function setupSwipe(element, data) {
         element.style.transform = `translate(${event.deltaX}px, ${event.deltaY}px) rotate(${event.deltaX / 10}deg)`;
         const likeIndicator = element.querySelector('.like');
         const nopeIndicator = element.querySelector('.nope');
-        if (event.deltaX > 0) { likeIndicator.style.opacity = event.deltaX / 100; }
+        if (event.deltaX > 0) { likeIndicator.style.opacity = event.deltaX / 100; } 
         else { nopeIndicator.style.opacity = -event.deltaX / 100; }
     });
     hammertime.on('panend', (event) => {
@@ -227,8 +238,44 @@ function showFavoritesModal() {
     favoritesModal.classList.remove('hidden');
 }
 
+function showMapModal() {
+    mapModal.classList.remove('hidden');
+    setTimeout(() => {
+        initializeMap(currentMapCenter.lat, currentMapCenter.lng);
+        addMarkersToMap(allCafes);
+    }, 100);
+}
+
+function initializeMap(lat, lng) {
+    if (!map) {
+        map = new google.maps.Map(document.getElementById("map"), {
+            center: { lat, lng },
+            zoom: 12,
+            disableDefaultUI: true,
+        });
+    } else {
+        map.setCenter({ lat, lng });
+    }
+}
+
+function addMarkersToMap(cafes) {
+    markers.forEach(marker => marker.setMap(null));
+    markers = [];
+    cafes.forEach(cafe => {
+        if (cafe.geometry && cafe.geometry.location) {
+            const marker = new google.maps.Marker({
+                position: cafe.geometry.location,
+                map: map,
+                title: cafe.name,
+            });
+            markers.push(marker);
+        }
+    });
+}
+
 function hideFavoritesModal() { favoritesModal.classList.add('hidden'); }
 function hideDetailsModal() { detailsModal.classList.add('hidden'); }
+function hideMapModal() { mapModal.classList.add('hidden'); }
 
 function showStatusMessage(message) {
     container.innerHTML = `<div class="status-message"><p>${message}</p></div>`;
@@ -240,5 +287,12 @@ function showLoader(message) {
     statusMessage.innerHTML = `<div class="loader-wrapper"><div class="loader"></div><p>${message}</p></div>`;
     statusMessage.classList.remove('hidden');
 }
-    
+
+function setClientApiKey() {
+    const mapScript = document.querySelector('script[src*="maps.googleapis.com"]');
+    if (mapScript) {
+        const url = new URL(mapScript.src);
+        apiKeyForClientPhotos = url.searchParams.get('key');
+    }
+}
 
