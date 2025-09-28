@@ -17,8 +17,8 @@ const detailsContent = document.getElementById('details-content');
 
 // --- API & APP STATE ---
 const apiKey = 'AIzaSyCnjJoGyaKw9Uw_1nbavjkFoKUtE4pvXho'; // CRITICAL: Add your API key here
-const useProxy = true; // Set to false if you are deploying to a live server
-const proxy = 'https://cors-anywhere.herokuapp.com/';
+const useProxy = false; // We are on a live server, so we turn the proxy OFF.
+const proxy = 'https://cors-anywhere.herokuapp.com/'; // This is now ignored.
 let allCafes = [];
 let currentCafes = [];
 let favorites = JSON.parse(localStorage.getItem('favoriteCafes')) || [];
@@ -240,4 +240,5 @@ function showLoader(message) {
     statusMessage.innerHTML = `<div class="loader-wrapper"><div class="loader"></div><p>${message}</p></div>`;
     statusMessage.classList.remove('hidden');
 }
+    
 
