@@ -14,10 +14,7 @@
         <header>
             <div class="header-top">
                  <h1>Cafe Finder</h1>
-                 <div class="header-buttons">
-                    <button id="view-map-btn" aria-label="View Map">🗺️</button>
-                    <button id="favorites-btn" aria-label="View Favorites">★</button>
-                 </div>
+                 <button id="favorites-btn" aria-label="View Favorites">★</button>
             </div>
             <form id="search-form">
                 <input type="text" id="location-search-input" placeholder="Search for a city...">
@@ -40,7 +37,7 @@
         </footer>
     </div>
 
-    <!-- Favorites Modal -->
+    <!-- Modals -->
     <div id="favorites-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <div class="modal-header">
@@ -50,9 +47,7 @@
             <div id="favorites-list" class="favorites-list"></div>
         </div>
     </div>
-
-    <!-- Cafe Details Modal -->
-    <div id="details-modal" class="modal-overlay hidden">
+     <div id="details-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Details</h2>
@@ -61,25 +56,10 @@
             <div id="details-content" class="details-content"></div>
         </div>
     </div>
-
-    <!-- New Map Modal -->
-    <div id="map-modal" class="modal-overlay hidden">
-        <div class="modal-content modal-map-content">
-            <div class="modal-header">
-                <h2>Cafe Map</h2>
-                <button id="close-map-modal-btn" class="close-btn">&times;</button>
-            </div>
-            <div id="map-container-modal">
-                <div id="map"></div>
-            </div>
-        </div>
-    </div>
     
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
     <script src="script.js"></script>
-    <!-- IMPORTANT: Google Maps JavaScript API Script -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCstbUPd1hDWSPCvUio9efeqlgd4egBAQA&callback=initMap" defer></script>
 </body>
 </html>
 
